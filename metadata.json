@@ -1,0 +1,6 @@
+{
+  "name": "مقرأة الإتقان القرآنية | نظام الدقائق",
+  "description": "تطبيق وموقع مقرأة قرآنية متخصص في الإقراء والتعليم القرآني بنظام الدقائق، شحن الباقات، ومتابعة رصيد التسميع الفوري.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
