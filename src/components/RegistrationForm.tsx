@@ -16,9 +16,13 @@ import {
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useApp } from '../context/AppContext';
-import { PROGRAMS, SHIFTS, getTelegramGroupLink } from '../constants';
-import { Gender, ProgramId, ShiftId, Student } from '../types';
+import { SHIFTS, getTelegramGroupLink, ACADEMY_NAME, ACADEMY_SHORT_NAME } from '../constants';
+import { Gender, ShiftId, RegistrationRequest } from '../types';
 import { triggerHaptic } from '../utils/telegram';
+
+interface RegistrationFormProps {
+  onGoToPortal: () => void;
+}
 
 const COUNTRIES = [
   'إثيوبيا (Ethiopia)',
@@ -39,19 +43,23 @@ const COUNTRIES = [
   'دولة أخرى...',
 ];
 
-export const RegistrationForm: React.FC = () => {
-  const { registerStudent, students, setActiveTab } = useApp();
+export const RegistrationForm: React.FC<RegistrationFormProps> = ({ onGoToPortal }) => {
+  const { submitRegistrationRequest, students, programs } = useApp();
 
   const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [telegramHandle, setTelegramHandle] = useState('');
   const [phone, setPhone] = useState('');
   const [country, setCountry] = useState('إثيوبيا (Ethiopia)');
   const [customCountry, setCustomCountry] = useState('');
+  const [city, setCity] = useState('');
+  const [age, setAge] = useState<number>(24);
   const [gender, setGender] = useState<Gender>('male');
-  const [program, setProgram] = useState<ProgramId>('talqeen');
+  const [programId, setProgramId] = useState<string>(programs[0]?.id || 'prog-talqeen');
   const [shift, setShift] = useState<ShiftId>('morning');
+  const [studentNotes, setStudentNotes] = useState('');
 
-  const [registeredResult, setRegisteredResult] = useState<Student | null>(null);
+  const [registeredResult, setRegisteredResult] = useState<RegistrationRequest | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
 
@@ -72,24 +80,30 @@ export const RegistrationForm: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!fullName.trim()) return;
 
-    const finalCountry = country === 'دولة أخرى...' && customCountry.trim() ? customCountry.trim() : country;
+    const finalCountry =
+      country === 'دولة أخرى...' && customCountry.trim() ? customCountry.trim() : country;
+    const selectedProgram = programs.find((p) => p.id === programId) || programs[0];
 
-    const newStudent = registerStudent({
-      fullName,
-      telegramHandle: telegramHandle.startsWith('@') ? telegramHandle : `@${telegramHandle.replace(/\s+/g, '')}`,
-      phone,
+    const result = submitRegistrationRequest({
+      fullName: fullName.trim(),
+      email: email.trim() || `${Date.now()}@jezery.quran`,
+      phone: phone.trim(),
       country: finalCountry,
-      program,
+      city: city.trim() || 'العاصمة',
+      age: Number(age) || 20,
       gender,
-      shift,
+      previousHifzLevel: 'less_than_10',
+      tilawaLevel: 'intermediate',
+      requestedProgramId: selectedProgram.id,
+      requestedProgramTitle: selectedProgram.title,
+      preferredShift: shift,
+      studentNotes,
     });
 
-    setRegisteredResult(newStudent);
+    setRegisteredResult(result);
 
-    // Festive confetti for joining the Quran Academy
     try {
       confetti({
         particleCount: 80,
@@ -97,9 +111,7 @@ export const RegistrationForm: React.FC = () => {
         origin: { y: 0.6 },
         colors: ['#064e3b', '#10b981', '#f59e0b', '#d97706', '#fef08a'],
       });
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
 
   const handleCopyCode = (code: string) => {
@@ -116,9 +128,8 @@ export const RegistrationForm: React.FC = () => {
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
-  // If newly registered, display the successful registration & digital card
   if (registeredResult) {
-    const groupInfo = getTelegramGroupLink(registeredResult.gender, registeredResult.shift);
+    const groupInfo = getTelegramGroupLink(registeredResult.gender, registeredResult.preferredShift);
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-6 sm:py-10">
@@ -126,117 +137,90 @@ export const RegistrationForm: React.FC = () => {
           {/* Header Banner */}
           <div className="bg-gradient-to-r from-[#064e3b] via-[#043e2f] to-[#022c22] p-6 text-white text-center relative">
             <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-amber-400 text-stone-900 shadow-lg mb-3">
-              <CheckCircle2 className="w-8 h-8" />
+              <Clock className="w-8 h-8 text-emerald-950" />
             </div>
             <h2 className="text-xl sm:text-2xl font-bold font-serif text-amber-200">
-              مرحباً بك في رحاب أهل القرآن
+              بَارَكَ اللَّـهُ فِيكَ وَنَفَعَ بِكَ
             </h2>
             <p className="text-xs sm:text-sm text-emerald-100/90 mt-1 max-w-md mx-auto">
-              تم تسجيلك بنجاح وتوليد كودك التعريفي الفريد. يُرجى حفظ الكود والانضمام لمجموعة التيليجرام الخاصة بك.
+              تم استلام طلب تسجيلك بنجاح في {ACADEMY_NAME}
             </p>
           </div>
 
           <div className="p-6 sm:p-8 space-y-6">
-            {/* Student ID Card Visual */}
-            <div className="bg-gradient-to-br from-emerald-900 via-emerald-800 to-[#022c22] rounded-2xl p-5 text-white shadow-lg border border-amber-400/40 relative overflow-hidden">
-              <div className="absolute top-0 right-0 -mr-10 -mt-10 w-32 h-32 rounded-full bg-amber-400/10 blur-xl"></div>
-              <div className="flex items-center justify-between border-b border-emerald-700/60 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-amber-400/20 text-amber-300 flex items-center justify-center font-bold text-sm">
-                    {registeredResult.gender === 'male' ? 'ذكر' : 'أنثى'}
-                  </div>
-                  <div>
-                    <div className="text-[11px] text-emerald-200">بطاقة الطالب الرقمية</div>
-                    <div className="font-bold text-sm sm:text-base text-white">{registeredResult.fullName}</div>
-                  </div>
-                </div>
-
-                <div className="text-left">
-                  <span className="text-[10px] text-amber-300 uppercase tracking-wider block">الكود الفريد</span>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <span className="font-mono text-xl sm:text-2xl font-black text-amber-300 tracking-wider">
-                      {registeredResult.code}
-                    </span>
-                    <button
-                      onClick={() => handleCopyCode(registeredResult.code)}
-                      className="p-1 rounded-md bg-emerald-700/80 hover:bg-emerald-600 text-white transition active:scale-90"
-                      title="نسخ الكود"
-                    >
-                      {copiedCode ? <CheckCircle2 className="w-4 h-4 text-emerald-300" /> : <Copy className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
+            {/* Elegant Pending Notice */}
+            <div className="bg-amber-50 rounded-2xl p-5 border-2 border-amber-300/80 text-amber-950 text-right space-y-3">
+              <div className="flex items-center gap-2.5 font-bold text-sm text-amber-900">
+                <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
+                <span>طلبك الآن قيد المراجعة والتدقيق وبانتظار اعتماد فضيلة الشيخ المشرف العام</span>
               </div>
-
-              <div className="grid grid-cols-2 gap-3 mt-4 text-xs">
-                <div className="bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-700/30">
-                  <span className="text-emerald-300/80 block text-[11px]">البرنامج التعليمي:</span>
-                  <span className="font-semibold text-white">
-                    {PROGRAMS.find((p) => p.id === registeredResult.program)?.title}
-                  </span>
-                </div>
-                <div className="bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-700/30">
-                  <span className="text-emerald-300/80 block text-[11px]">الفترة والموعد:</span>
-                  <span className="font-semibold text-white">
-                    {SHIFTS.find((s) => s.id === registeredResult.shift)?.title}
-                  </span>
-                </div>
-              </div>
+              <p className="text-xs text-amber-900/90 leading-relaxed font-serif">
+                «حِرْصاً على ضَبْطِ الحَلَقَاتِ القُرْآنِيَّةِ وَجَوْدَةِ الإِقْرَاءِ بِالسَّنَدِ المُتَّصِلِ، تُعْرَضُ جَمِيعُ طَلَبَاتِ الانْضِمَامِ عَلَى فَضِيلَةِ الشَّيْخِ المُشْرِفِ العَامِّ للاعْتِمَادِ. سَيَصِلُكَ إِشْعَارٌ فَوْرَ المُوافَقَةِ عَلَى طَلَبِكَ وَتَفْعِيلِ مَحْفَظَتِكَ وَإِتَاحَةِ رَابِطِ حَلْقَتِكَ الخَاصَّةِ».
+              </p>
             </div>
 
-            {/* Telegram Group Direct Invitation */}
-            <div className="bg-sky-50 rounded-2xl p-5 border border-sky-200">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-xl bg-sky-500 text-white flex items-center justify-center shrink-0 shadow-md">
-                  <Send className="w-5 h-5 -rotate-12" />
+            {/* Application Summary Card */}
+            <div className="bg-white rounded-2xl p-5 text-stone-800 shadow-sm border border-stone-200 space-y-3">
+              <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+                <div>
+                  <span className="text-[10px] text-stone-500 block">اسم الطالب المسجل:</span>
+                  <span className="font-bold text-sm text-emerald-950">{registeredResult.fullName}</span>
                 </div>
-                <div className="space-y-1 grow">
-                  <h3 className="font-bold text-sky-950 text-sm sm:text-base">
-                    رابط مجموعة التيليجرام الخاصة بحلقتك
-                  </h3>
-                  <p className="text-xs text-sky-800 leading-relaxed">
-                    هنا يُقام بث التسميع المباشر اليومي مع الشيخ في موعد فترتك التعليمية. انضم الآن وعرّف بنفسك بكودك:
-                    <strong className="text-emerald-800 font-mono mx-1 font-bold">({registeredResult.code})</strong>
-                  </p>
-
-                  <div className="pt-3 flex flex-wrap gap-2">
-                    <a
-                      href={groupInfo.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs sm:text-sm font-bold shadow-md transition active:scale-95"
-                    >
-                      <span>الانضمام للمجموعة المباشرة</span>
-                      <ExternalLink className="w-4 h-4" />
-                    </a>
-
+                <div className="text-left">
+                  <span className="text-[10px] text-stone-500 block">الكود الأكاديمي المقترح:</span>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="font-mono text-base font-bold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">
+                      {registeredResult.generatedCode}
+                    </span>
                     <button
-                      onClick={() => handleCopyLink(groupInfo.url)}
-                      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-sky-300 bg-white hover:bg-sky-100 text-sky-800 text-xs font-semibold transition"
+                      onClick={() => handleCopyCode(registeredResult.generatedCode!)}
+                      className="p-1 rounded-md hover:bg-stone-100 text-stone-500 transition"
+                      title="نسخ الكود"
                     >
-                      <Copy className="w-3.5 h-3.5" />
-                      <span>{copiedLink ? 'تم نسخ الرابط!' : 'نسخ الرابط'}</span>
+                      {copiedCode ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                     </button>
                   </div>
                 </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200">
+                  <span className="text-stone-500 block text-[11px]">البرنامج المختار:</span>
+                  <span className="font-semibold text-emerald-950">
+                    {registeredResult.requestedProgramTitle}
+                  </span>
+                </div>
+                <div className="bg-stone-50 p-2.5 rounded-xl border border-stone-200">
+                  <span className="text-stone-500 block text-[11px]">الفترة والموعد:</span>
+                  <span className="font-semibold text-emerald-950">
+                    {SHIFTS.find((s) => s.id === registeredResult.preferredShift)?.title}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between text-xs pt-1 text-stone-500">
+                <span>حالة الطلب:</span>
+                <span className="inline-flex items-center gap-1 font-bold text-amber-700 bg-amber-100/80 px-2 py-0.5 rounded-full">
+                  <Clock className="w-3 h-3 animate-pulse" />
+                  <span>بانتظار موافقة المشرف</span>
+                </span>
               </div>
             </div>
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 pt-2">
               <button
-                onClick={() => setActiveTab('student_portal')}
-                className="grow flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-800 to-emerald-950 hover:from-emerald-700 hover:to-emerald-900 text-white font-bold text-sm shadow-md transition active:scale-98"
+                onClick={onGoToPortal}
+                className="grow flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-800 to-emerald-950 hover:from-emerald-700 hover:to-emerald-900 text-white font-bold text-xs sm:text-sm shadow-md transition active:scale-98"
               >
-                <span>الانتقال لبوابة الطالب وشحن الرصيد</span>
+                <span>الذهاب لبوابة الطالب ومتابعة الحساب</span>
                 <ChevronLeft className="w-4 h-4" />
               </button>
-
               <button
                 onClick={() => setRegisteredResult(null)}
-                className="py-3 px-4 rounded-xl border border-stone-300 hover:bg-stone-100 text-stone-700 font-medium text-xs transition"
+                className="py-3 px-4 rounded-xl border border-stone-300 hover:bg-stone-100 text-stone-700 font-bold text-xs transition"
               >
-                تسجيل طالب آخر
+                تسجيل طلب آخر
               </button>
             </div>
           </div>
@@ -247,24 +231,24 @@ export const RegistrationForm: React.FC = () => {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8">
-      {/* Intro Heading */}
+      {/* Heading */}
       <div className="text-center mb-6">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 border border-amber-300/80 text-amber-900 text-xs font-bold mb-2">
           <Sparkles className="w-3.5 h-3.5 text-amber-600" />
           <span>استمارة التسجيل الذكية والترميز الآلي</span>
         </div>
         <h2 className="text-xl sm:text-3xl font-black text-emerald-950 font-serif">
-          تسجيل طالب جديد في المقرأة
+          تسجيل طالب جديد في {ACADEMY_NAME}
         </h2>
         <p className="text-xs sm:text-sm text-stone-600 max-w-lg mx-auto mt-1">
-          اختر برنامجك التعليمي وفترتك المناسبة لتوليد كودك الأكاديمي والحصول على رابط حلقة التسميع فوراً.
+          اختر مسارك القرآني وفترتك التعليمية المناسبة لحجز مقعدك وتوليد كودك الأكاديمي فوراً.
         </p>
       </div>
 
       {/* Main Form */}
       <form onSubmit={handleSubmit} className="bg-white rounded-3xl shadow-xl border border-stone-200/80 p-5 sm:p-8 space-y-6">
         
-        {/* Section 1: Basic Information */}
+        {/* Section 1: Basic Personal Info */}
         <div className="space-y-4">
           <h3 className="text-sm font-bold text-emerald-900 border-b border-emerald-100 pb-2 flex items-center gap-2">
             <User className="w-4 h-4 text-emerald-700" />
@@ -272,97 +256,70 @@ export const RegistrationForm: React.FC = () => {
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Full Name */}
             <div>
               <label className="block text-xs font-bold text-stone-800 mb-1">
                 الاسم الكامل ثلاثياً <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="مثال: عبد الله بن محمد الأحمد"
-                  className="w-full pl-3 pr-10 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 text-sm bg-stone-50/50"
-                />
-                <User className="w-4 h-4 text-stone-400 absolute right-3.5 top-3" />
-              </div>
+              <input
+                type="text"
+                required
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder="مثال: عبد الله بن محمد الأحمد"
+                className="w-full px-3 py-2.5 rounded-xl border border-stone-300 focus:ring-2 focus:ring-emerald-700 text-sm bg-stone-50/50"
+              />
             </div>
 
-            {/* Telegram Handle */}
             <div>
               <label className="block text-xs font-bold text-stone-800 mb-1">
                 معرف التيليجرام أو رقم الحساب <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  required
-                  value={telegramHandle}
-                  onChange={(e) => setTelegramHandle(e.target.value)}
-                  placeholder="مثال: @username أو رقم الهاتف"
-                  className="w-full pl-3 pr-10 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 text-sm bg-stone-50/50 text-left font-mono"
-                  dir="ltr"
-                />
-                <Send className="w-4 h-4 text-stone-400 absolute right-3.5 top-3" />
-              </div>
-              <span className="text-[10px] text-stone-500 mt-1 block">ضروري جداً للمتابعة وإرسال إشعار الدقائق اليومي</span>
+              <input
+                type="text"
+                required
+                value={telegramHandle}
+                onChange={(e) => setTelegramHandle(e.target.value)}
+                placeholder="مثال: @username أو رقم الهاتف"
+                className="w-full px-3 py-2.5 rounded-xl border border-stone-300 focus:ring-2 focus:ring-emerald-700 text-sm bg-stone-50/50 text-left font-mono"
+                dir="ltr"
+              />
             </div>
 
-            {/* Phone */}
             <div>
               <label className="block text-xs font-bold text-stone-800 mb-1">
                 رقم الهاتف (واتساب / اتصال) <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="مثال: +251 91 234 5678"
-                  className="w-full pl-3 pr-10 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 text-sm bg-stone-50/50 text-left font-mono"
-                  dir="ltr"
-                />
-                <Phone className="w-4 h-4 text-stone-400 absolute right-3.5 top-3" />
-              </div>
+              <input
+                type="tel"
+                required
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="مثال: +251 91 234 5678"
+                className="w-full px-3 py-2.5 rounded-xl border border-stone-300 focus:ring-2 focus:ring-emerald-700 text-sm bg-stone-50/50 text-left font-mono"
+                dir="ltr"
+              />
             </div>
 
-            {/* Country */}
             <div>
               <label className="block text-xs font-bold text-stone-800 mb-1">
                 بلد الإقامة <span className="text-red-500">*</span>
               </label>
-              <div className="relative">
-                <select
-                  value={country}
-                  onChange={(e) => setCountry(e.target.value)}
-                  className="w-full pl-3 pr-10 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 text-sm bg-stone-50/50 text-stone-800"
-                >
-                  {COUNTRIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-                <Globe className="w-4 h-4 text-stone-400 absolute right-3.5 top-3" />
-              </div>
-              {country === 'دولة أخرى...' && (
-                <input
-                  type="text"
-                  required
-                  value={customCountry}
-                  onChange={(e) => setCustomCountry(e.target.value)}
-                  placeholder="اكتب اسم دولتك هنا..."
-                  className="w-full mt-2 px-3 py-2 rounded-xl border border-stone-300 text-sm"
-                />
-              )}
+              <select
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-xl border border-stone-300 focus:ring-2 focus:ring-emerald-700 text-sm bg-stone-50/50 text-stone-800"
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
 
-        {/* Section 2: Gender & Automatic Code Generation */}
+        {/* Section 2: Gender & Auto Code Preview */}
         <div className="space-y-3 pt-2">
           <div className="flex items-center justify-between border-b border-emerald-100 pb-2">
             <h3 className="text-sm font-bold text-emerald-900 flex items-center gap-2">
@@ -370,17 +327,16 @@ export const RegistrationForm: React.FC = () => {
               <span>٢. الجنس ونظام الترميز الآلي</span>
             </h3>
             <div className="text-xs bg-amber-100 text-amber-900 px-2.5 py-0.5 rounded-full font-mono font-bold border border-amber-300">
-              الكود التلقائي: {previewCode}
+              الكود المتوقع: {previewCode}
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            {/* Male */}
             <label
               className={`flex items-center justify-between p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
                 gender === 'male'
-                  ? 'border-emerald-600 bg-emerald-50/80 shadow-xs'
-                  : 'border-stone-200 hover:border-emerald-300 bg-stone-50/30'
+                  ? 'border-emerald-700 bg-emerald-50/80 shadow-xs'
+                  : 'border-stone-200 bg-stone-50/30'
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -390,24 +346,20 @@ export const RegistrationForm: React.FC = () => {
                   value="male"
                   checked={gender === 'male'}
                   onChange={() => setGender('male')}
-                  className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+                  className="w-4 h-4 text-emerald-700"
                 />
                 <div>
                   <span className="block text-sm font-bold text-stone-900">ذكر (طالب)</span>
-                  <span className="text-[11px] text-stone-500">كود يبدأ بـ <strong className="text-emerald-700 font-mono">IM-</strong></span>
+                  <span className="text-[11px] text-stone-500">كود يبدأ بـ <strong className="text-emerald-800 font-mono">IM-</strong></span>
                 </div>
               </div>
-              <span className="text-xs font-mono font-bold px-2 py-1 bg-white rounded-lg border border-stone-200 text-emerald-800">
-                IM-xxxx
-              </span>
             </label>
 
-            {/* Female */}
             <label
               className={`flex items-center justify-between p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
                 gender === 'female'
-                  ? 'border-emerald-600 bg-emerald-50/80 shadow-xs'
-                  : 'border-stone-200 hover:border-emerald-300 bg-stone-50/30'
+                  ? 'border-emerald-700 bg-emerald-50/80 shadow-xs'
+                  : 'border-stone-200 bg-stone-50/30'
               }`}
             >
               <div className="flex items-center gap-2.5">
@@ -417,65 +369,53 @@ export const RegistrationForm: React.FC = () => {
                   value="female"
                   checked={gender === 'female'}
                   onChange={() => setGender('female')}
-                  className="w-4 h-4 text-emerald-600 focus:ring-emerald-500"
+                  className="w-4 h-4 text-emerald-700"
                 />
                 <div>
                   <span className="block text-sm font-bold text-stone-900">أنثى (طالبة)</span>
-                  <span className="text-[11px] text-stone-500">كود يبدأ بـ <strong className="text-purple-700 font-mono">IF-</strong></span>
+                  <span className="text-[11px] text-stone-500">كود يبدأ بـ <strong className="text-purple-800 font-mono">IF-</strong></span>
                 </div>
               </div>
-              <span className="text-xs font-mono font-bold px-2 py-1 bg-white rounded-lg border border-stone-200 text-purple-800">
-                IF-xxxx
-              </span>
             </label>
           </div>
         </div>
 
-        {/* Section 3: Educational Program Selection */}
+        {/* Section 3: Educational Program */}
         <div className="space-y-3 pt-2">
           <h3 className="text-sm font-bold text-emerald-900 border-b border-emerald-100 pb-2 flex items-center gap-2">
             <BookOpen className="w-4 h-4 text-emerald-700" />
-            <span>٣. اختيار البرنامج التعليمي</span>
+            <span>٣. اختيار البرنامج القرآني</span>
           </h3>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {PROGRAMS.map((prog) => {
-              const isSelected = program === prog.id;
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {programs.map((prog) => {
+              const isSelected = programId === prog.id;
               return (
                 <div
                   key={prog.id}
-                  onClick={() => setProgram(prog.id)}
-                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all relative flex flex-col justify-between ${
+                  onClick={() => setProgramId(prog.id)}
+                  className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
                     isSelected
-                      ? 'border-emerald-700 bg-emerald-50/70 shadow-sm'
-                      : 'border-stone-200 hover:border-stone-300 bg-stone-50/20'
+                      ? 'border-emerald-700 bg-emerald-50/80 shadow-xs'
+                      : 'border-stone-200 bg-stone-50/20 hover:border-stone-300'
                   }`}
                 >
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${isSelected ? 'bg-emerald-700 text-white' : 'bg-stone-200 text-stone-700'}`}>
-                        {prog.badge}
-                      </span>
-                      <input
-                        type="radio"
-                        name="program"
-                        checked={isSelected}
-                        onChange={() => setProgram(prog.id)}
-                        className="w-4 h-4 text-emerald-700"
-                      />
-                    </div>
-                    <h4 className="text-sm font-bold text-stone-900 leading-snug">{prog.title}</h4>
-                    <p className="text-[11px] text-stone-600 mt-1 leading-relaxed">
-                      {prog.description}
-                    </p>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-stone-900">{prog.title}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-stone-200 text-stone-700">
+                      {prog.badge}
+                    </span>
                   </div>
+                  <p className="text-[11px] text-stone-600 line-clamp-2 leading-relaxed">
+                    {prog.description}
+                  </p>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* Section 4: Shifts Selection */}
+        {/* Section 4: Shifts */}
         <div className="space-y-3 pt-2">
           <h3 className="text-sm font-bold text-emerald-900 border-b border-emerald-100 pb-2 flex items-center gap-2">
             <Clock className="w-4 h-4 text-emerald-700" />
@@ -491,24 +431,13 @@ export const RegistrationForm: React.FC = () => {
                   onClick={() => setShift(s.id)}
                   className={`p-3.5 rounded-2xl border-2 cursor-pointer transition-all ${
                     isSelected
-                      ? 'border-emerald-700 bg-amber-50/60 shadow-sm'
-                      : 'border-stone-200 hover:border-stone-300 bg-stone-50/20'
+                      ? 'border-emerald-700 bg-amber-50/60 shadow-xs'
+                      : 'border-stone-200 bg-stone-50/20 hover:border-stone-300'
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-sm text-stone-900">{s.title}</span>
-                    <input
-                      type="radio"
-                      name="shift"
-                      checked={isSelected}
-                      onChange={() => setShift(s.id)}
-                      className="w-4 h-4 text-emerald-700"
-                    />
-                  </div>
-                  <div className="text-xs font-mono font-bold text-emerald-800 bg-white/80 px-2 py-0.5 rounded-md inline-block border border-stone-200 my-1">
-                    {s.time}
-                  </div>
-                  <p className="text-[11px] text-stone-500 mt-1">{s.description}</p>
+                  <div className="font-bold text-xs text-stone-900">{s.title}</div>
+                  <div className="text-[11px] font-mono font-bold text-emerald-800 my-0.5">{s.time}</div>
+                  <p className="text-[10px] text-stone-500">{s.description}</p>
                 </div>
               );
             })}
@@ -516,17 +445,14 @@ export const RegistrationForm: React.FC = () => {
         </div>
 
         {/* Submit Button */}
-        <div className="pt-4">
+        <div className="pt-3">
           <button
             type="submit"
-            className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-800 via-emerald-700 to-emerald-900 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold text-base shadow-lg shadow-emerald-900/20 transition-all active:scale-98 flex items-center justify-center gap-2"
+            className="w-full py-3.5 px-6 rounded-2xl bg-gradient-to-r from-emerald-800 via-emerald-700 to-emerald-900 hover:from-emerald-700 hover:to-emerald-800 text-white font-bold text-sm sm:text-base shadow-lg transition-all active:scale-98 flex items-center justify-center gap-2"
           >
             <span>إتمام التسجيل وتوليد الكود الآلي</span>
             <ArrowRight className="w-5 h-5 -scale-x-100" />
           </button>
-          <p className="text-center text-[11px] text-stone-500 mt-2">
-            سيتم منحك الكود الرسمي ورابط البث المباشر فور الضغط على الزر أعلاه.
-          </p>
         </div>
       </form>
     </div>

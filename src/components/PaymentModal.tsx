@@ -5,46 +5,46 @@ import {
   Copy,
   CheckCircle2,
   Upload,
-  Sparkles,
   AlertCircle,
   Building2,
-  Wallet,
   Clock,
   ArrowRight,
+  ShieldCheck,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { BANK_ACCOUNTS, MINUTE_PACKAGES } from '../constants';
-import { MinutePackage, Student } from '../types';
+import { MinutePackage, StudentRecord } from '../types';
 import { triggerHaptic } from '../utils/telegram';
 
 interface PaymentModalProps {
-  student: Student;
+  student: StudentRecord;
   isOpen: boolean;
   onClose: () => void;
 }
 
 export const PaymentModal: React.FC<PaymentModalProps> = ({ student, isOpen, onClose }) => {
-  const { submitPayment } = useApp();
+  const { packages, paymentMethods, submitPaymentRequest } = useApp();
 
-  const [selectedPackage, setSelectedPackage] = useState<MinutePackage>(MINUTE_PACKAGES[1]); // 200 min default
-  const [selectedBankId, setSelectedBankId] = useState<string>('cbe');
+  const [selectedPackage, setSelectedPackage] = useState<MinutePackage>(packages[1] || packages[0]);
+  const [selectedMethodId, setSelectedMethodId] = useState<string>(paymentMethods[0]?.id || 'cbe');
+  const [senderName, setSenderName] = useState<string>(student.fullName);
+  const [senderPhone, setSenderPhone] = useState<string>(student.phone);
   const [transactionRef, setTransactionRef] = useState<string>('');
   const [receiptImage, setReceiptImage] = useState<string>('');
-  const [copiedBankId, setCopiedBankId] = useState<string | null>(null);
+  const [copiedMethodId, setCopiedMethodId] = useState<string | null>(null);
   const [copiedBeneficiary, setCopiedBeneficiary] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ text: string; error: boolean } | null>(null);
 
   if (!isOpen) return null;
 
-  const currentBank = BANK_ACCOUNTS.find((b) => b.id === selectedBankId) || BANK_ACCOUNTS[0];
+  const currentMethod = paymentMethods.find((m) => m.id === selectedMethodId) || paymentMethods[0];
 
-  const handleCopy = (text: string, bankId?: string) => {
+  const handleCopy = (text: string, methodId?: string) => {
     navigator.clipboard.writeText(text);
     triggerHaptic('light');
-    if (bankId) {
-      setCopiedBankId(bankId);
-      setTimeout(() => setCopiedBankId(null), 2000);
+    if (methodId) {
+      setCopiedMethodId(methodId);
+      setTimeout(() => setCopiedMethodId(null), 2000);
     } else {
       setCopiedBeneficiary(true);
       setTimeout(() => setCopiedBeneficiary(false), 2000);
@@ -55,7 +55,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ student, isOpen, onC
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        setStatusMessage({ text: 'حجم الصورة كبير جداً، يُرجى رفع صورة أقل من 5 ميجابايت', error: true });
+        setStatusMessage({ text: 'حجم الصورة كبير، يرجى اختيار صورة أقل من 5 ميجابايت', error: true });
         return;
       }
       const reader = new FileReader();
@@ -70,21 +70,22 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ student, isOpen, onC
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!transactionRef.trim()) {
-      setStatusMessage({ text: 'يرجى إدخال الرقم المرجعي للعملية (Transaction Ref)', error: true });
+      setStatusMessage({ text: 'يُرجى إدخال الرقم المرجعي للعملية (Transaction Ref)', error: true });
       return;
     }
 
     if (!receiptImage) {
-      setStatusMessage({ text: 'يرجى إرفاق صورة إشعار أو إيصال التحويل البنكي', error: true });
+      setStatusMessage({ text: 'يُرجى إرفاق صورة إشعار أو إيصال التحويل البنكي', error: true });
       return;
     }
 
     setIsSubmitting(true);
-    const result = submitPayment({
+    const result = submitPaymentRequest({
       studentId: student.id,
-      packageMinutes: selectedPackage.minutes,
-      amountEtb: selectedPackage.priceEtb,
-      bankId: selectedBankId,
+      packageId: selectedPackage.id,
+      paymentMethodId: selectedMethodId,
+      senderName: senderName.trim() || student.fullName,
+      senderPhone: senderPhone.trim() || student.phone,
       transactionRef: transactionRef.trim(),
       receiptImage,
     });
@@ -92,29 +93,32 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ student, isOpen, onC
     setIsSubmitting(false);
 
     if (result.success) {
-      setStatusMessage({ text: result.message, error: false });
+      setStatusMessage({ text: 'تم إرسال إشعار الدفع بنجاح للمراجعة والاعتماد.', error: false });
       setTimeout(() => {
         onClose();
         setStatusMessage(null);
         setTransactionRef('');
         setReceiptImage('');
-      }, 2500);
+      }, 2000);
     } else {
       setStatusMessage({ text: result.message, error: true });
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-[#fdfbf7] rounded-3xl shadow-2xl border border-amber-300/80 overflow-hidden my-6">
-        {/* Modal Header */}
-        <div className="bg-gradient-to-r from-[#064e3b] via-[#043e2f] to-[#022c22] p-5 text-white flex items-center justify-between">
+    <div
+      dir="rtl"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-xs p-3 sm:p-4 overflow-y-auto"
+    >
+      <div className="relative w-full max-w-2xl bg-[#fdfbf7] rounded-3xl shadow-2xl border border-amber-300/80 overflow-hidden my-auto max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="bg-[#064e3b] p-5 text-white flex items-center justify-between border-b border-amber-400/30 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-400 text-stone-900 flex items-center justify-center font-bold shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-amber-400 text-stone-900 flex items-center justify-center font-bold shadow-xs">
               <CreditCard className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-base sm:text-lg text-amber-200">
+              <h3 className="font-bold text-base text-amber-200">
                 شحن باقات الدقائق القرآنية
               </h3>
               <p className="text-xs text-emerald-100">
@@ -124,19 +128,18 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ student, isOpen, onC
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-emerald-800 text-emerald-200 transition"
+            className="p-1 rounded-full text-emerald-200 hover:text-white hover:bg-emerald-800 transition"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Modal Body */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5 max-h-[80vh] overflow-y-auto">
-          
-          {/* Step 1: Package Selection */}
+        {/* Scrollable Form Body */}
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-5 overflow-y-auto flex-1 text-xs">
+          {/* Step 1: Packages */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+              <span className="font-bold text-stone-900 flex items-center gap-1.5">
                 <Clock className="w-4 h-4 text-emerald-700" />
                 <span>١. اختر باقة الدقائق المناسبة</span>
               </span>
@@ -144,7 +147,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ student, isOpen, onC
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              {MINUTE_PACKAGES.map((pkg) => {
+              {packages.map((pkg) => {
                 const isSelected = selectedPackage.id === pkg.id;
                 return (
                   <div
@@ -152,43 +155,38 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ student, isOpen, onC
                     onClick={() => setSelectedPackage(pkg)}
                     className={`p-3 rounded-2xl border-2 cursor-pointer transition-all text-center relative ${
                       isSelected
-                        ? 'border-emerald-700 bg-emerald-50/80 ring-2 ring-emerald-600/30 shadow-sm'
-                        : 'border-stone-200 hover:border-stone-300 bg-white'
+                        ? 'border-emerald-700 bg-emerald-50/80 ring-2 ring-emerald-600/30 shadow-xs'
+                        : 'border-stone-200 bg-white hover:border-stone-300'
                     }`}
                   >
                     {pkg.popular && (
-                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-amber-500 text-stone-900 text-[9px] font-black px-2 py-0.2 rounded-full shadow-xs">
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-amber-500 text-stone-900 text-[9px] font-black px-2 py-0.2 rounded-full shadow-2xs">
                         الأكثر طلباً
                       </span>
                     )}
-                    <div className="text-xl font-black text-emerald-950 font-mono mt-1">
+                    <div className="text-lg font-black text-emerald-950 font-mono mt-1">
                       {pkg.minutes} <span className="text-xs font-sans font-bold text-emerald-800">دقيقة</span>
                     </div>
-                    <div className="text-sm font-bold text-amber-700 mt-0.5 font-mono">
-                      {pkg.priceEtb} <span className="text-[10px] font-sans">بر</span>
+                    <div className="text-xs font-bold text-amber-800 mt-0.5 font-mono">
+                      {pkg.priceEtb} بر
                     </div>
-                    {pkg.tag && (
-                      <div className="text-[9px] text-stone-500 mt-1 line-clamp-1">
-                        {pkg.tag}
-                      </div>
-                    )}
                   </div>
                 );
               })}
             </div>
           </div>
 
-          {/* Step 2: Bank Account Details */}
+          {/* Step 2: Payment Accounts */}
           <div className="space-y-3 bg-amber-50/60 p-4 rounded-2xl border border-amber-200/80">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+              <span className="font-bold text-stone-900 flex items-center gap-1.5">
                 <Building2 className="w-4 h-4 text-emerald-700" />
                 <span>٢. حسابات التحويل المعتمدة (اسم المستفيد الموحد)</span>
               </span>
             </div>
 
             {/* Beneficiary Card */}
-            <div className="bg-white p-2.5 rounded-xl border border-amber-200 flex items-center justify-between text-xs">
+            <div className="bg-white p-2.5 rounded-xl border border-amber-200 flex items-center justify-between">
               <div>
                 <span className="text-stone-500 text-[10px] block">اسم المستفيد (Beneficiary Name):</span>
                 <span className="font-bold text-emerald-950 text-sm font-mono tracking-wide">
@@ -205,79 +203,77 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ student, isOpen, onC
               </button>
             </div>
 
-            {/* Bank Select Tabs */}
+            {/* Select Method Tab Pills */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {BANK_ACCOUNTS.map((bank) => {
-                const isSelected = selectedBankId === bank.id;
+              {paymentMethods.map((m) => {
+                const isSelected = selectedMethodId === m.id;
                 return (
                   <button
-                    key={bank.id}
+                    key={m.id}
                     type="button"
-                    onClick={() => setSelectedBankId(bank.id)}
-                    className={`p-2.5 rounded-xl border text-center transition-all ${
+                    onClick={() => setSelectedMethodId(m.id)}
+                    className={`p-2 rounded-xl border text-center transition-all ${
                       isSelected
-                        ? 'border-emerald-700 bg-white ring-2 ring-emerald-600/40 shadow-xs'
+                        ? 'border-emerald-700 bg-white ring-2 ring-emerald-600/30 shadow-2xs'
                         : 'border-stone-200 bg-white/70 hover:bg-white text-stone-600'
                     }`}
                   >
-                    <span className="text-xs font-bold block text-stone-900 truncate">{bank.name.split('(')[0]}</span>
-                    <span className="text-[10px] text-stone-500 font-mono">{bank.logoText}</span>
+                    <span className="text-xs font-bold block truncate">{m.name.split('(')[0]}</span>
+                    <span className="text-[10px] text-stone-500 font-mono">{m.logoText}</span>
                   </button>
                 );
               })}
             </div>
 
-            {/* Selected Bank Details Card */}
-            <div className="bg-white p-3.5 rounded-xl border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${currentBank.badgeColor}`}>
-                    {currentBank.logoText}
-                  </span>
-                  <span className="text-xs font-bold text-stone-800">{currentBank.name}</span>
+            {/* Method Details */}
+            {currentMethod && (
+              <div className="bg-white p-3.5 rounded-xl border border-stone-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${currentMethod.badgeColor}`}>
+                      {currentMethod.logoText}
+                    </span>
+                    <span className="font-bold text-stone-800">{currentMethod.name}</span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-2">
+                    <span className="text-stone-400 text-[10px]">رقم الحساب / المحفظة:</span>
+                    <span className="font-mono text-base font-black text-emerald-950 tracking-wider">
+                      {currentMethod.accountNumber}
+                    </span>
+                  </div>
                 </div>
-                <div className="mt-1 flex items-center gap-2">
-                  <span className="text-[10px] text-stone-500">رقم الحساب / المحفظة:</span>
-                  <span className="font-mono text-base font-black text-emerald-950 tracking-wider">
-                    {currentBank.accountNumber}
-                  </span>
-                </div>
-                {currentBank.transferGuide && (
-                  <div className="text-[10px] text-stone-500 mt-0.5">{currentBank.transferGuide}</div>
-                )}
-              </div>
 
-              <button
-                type="button"
-                onClick={() => handleCopy(currentBank.accountNumber, currentBank.id)}
-                className="self-end sm:self-center flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold shadow-xs active:scale-95 transition"
-              >
-                {copiedBankId === currentBank.id ? (
-                  <>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
-                    <span>تم النسخ!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>نسخ الرقم</span>
-                  </>
-                )}
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={() => handleCopy(currentMethod.accountNumber, currentMethod.id)}
+                  className="self-end sm:self-center flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-900 hover:bg-emerald-800 text-white font-bold transition active:scale-95"
+                >
+                  {copiedMethodId === currentMethod.id ? (
+                    <>
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
+                      <span>تم النسخ!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>نسخ الرقم</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Step 3: Transaction Ref & Receipt Upload */}
-          <div className="space-y-4 pt-1">
-            <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+          <div className="space-y-3 pt-1">
+            <span className="font-bold text-stone-900 flex items-center gap-1.5">
               <Upload className="w-4 h-4 text-emerald-700" />
               <span>٣. تأكيد التحويل وإرفاق الإشعار</span>
             </span>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Transaction Ref Input */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-stone-800 mb-1">
+                <label className="block font-bold text-stone-800 mb-1">
                   الرقم المرجعي للعملية (Transaction Ref) <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -286,42 +282,35 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ student, isOpen, onC
                   value={transactionRef}
                   onChange={(e) => setTransactionRef(e.target.value)}
                   placeholder="مثال: FT2630588912 أو رقم إشعار تيليبير"
-                  className="w-full px-3 py-2.5 rounded-xl border border-stone-300 focus:outline-hidden focus:ring-2 focus:ring-emerald-600 text-sm font-mono bg-white"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs bg-white focus:ring-2 focus:ring-emerald-700"
                   dir="ltr"
                 />
-                <span className="text-[10px] text-stone-500 mt-1 block">
-                  الرقم الفريد الظاهر في رسالة أو إشعار البنك للتأكد الفوري
-                </span>
               </div>
 
-              {/* Receipt File Upload */}
               <div>
-                <label className="block text-xs font-bold text-stone-800 mb-1">
+                <label className="block font-bold text-stone-800 mb-1">
                   صورة إشعار التحويل (Screenshot) <span className="text-red-500">*</span>
                 </label>
-                <div className="relative">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="w-full text-xs text-stone-500 file:mr-0 file:ml-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer border border-stone-300 rounded-xl p-1 bg-white"
-                  />
-                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="w-full text-xs text-stone-500 file:mr-0 file:ml-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:bg-emerald-100 file:text-emerald-800 border rounded-xl p-1 bg-white cursor-pointer"
+                />
                 {receiptImage && (
-                  <div className="mt-2 flex items-center gap-2 text-xs text-emerald-700 bg-emerald-50 p-2 rounded-xl border border-emerald-200">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span className="truncate">تم تحميل صورة الإشعار بنجاح</span>
-                    <img src={receiptImage} alt="Receipt preview" className="w-8 h-8 rounded object-cover ml-auto border" />
+                  <div className="mt-1 flex items-center gap-2 text-[10px] text-emerald-800">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                    <span>تم تجهيز الصورة للإرسال</span>
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Status / Error feedback */}
+          {/* Status Message */}
           {statusMessage && (
             <div
-              className={`p-3 rounded-xl text-xs font-medium flex items-center gap-2 ${
+              className={`p-3 rounded-xl flex items-center gap-2 ${
                 statusMessage.error
                   ? 'bg-red-50 text-red-800 border border-red-200'
                   : 'bg-emerald-50 text-emerald-900 border border-emerald-200'
@@ -336,12 +325,12 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ student, isOpen, onC
             </div>
           )}
 
-          {/* Submit Button */}
-          <div className="pt-2 flex items-center justify-between gap-3 border-t border-stone-200">
-            <div className="text-xs">
-              <span className="text-stone-500 block">المبلغ المطلوب تحويله:</span>
-              <span className="text-lg font-black text-emerald-900 font-mono">
-                {selectedPackage.priceEtb} بر <span className="text-xs font-sans text-stone-600">({selectedPackage.minutes} دقيقة)</span>
+          {/* Actions */}
+          <div className="pt-2 flex items-center justify-between border-t border-stone-200">
+            <div>
+              <span className="text-stone-400 text-[10px] block">المبلغ المطلوب:</span>
+              <span className="text-base font-black text-emerald-900 font-mono">
+                {selectedPackage.priceEtb} بر <span className="text-[11px] font-sans text-stone-600">({selectedPackage.minutes} دقيقة)</span>
               </span>
             </div>
 
@@ -349,17 +338,16 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ student, isOpen, onC
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2.5 rounded-xl border border-stone-300 text-stone-700 text-xs font-bold hover:bg-stone-100 transition"
+                className="px-3.5 py-2 rounded-xl border border-stone-300 font-bold hover:bg-stone-100"
               >
                 إلغاء
               </button>
-
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-800 to-emerald-900 hover:from-emerald-700 hover:to-emerald-800 text-white text-xs font-bold shadow-md transition active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
+                className="px-5 py-2 rounded-xl bg-emerald-900 hover:bg-emerald-800 text-white font-bold transition shadow-xs disabled:opacity-50 flex items-center gap-1.5"
               >
-                <span>إرسال إشعار الدفع للاعتماد</span>
+                <span>إرسال إشعار الدفع</span>
                 <ArrowRight className="w-4 h-4 -scale-x-100" />
               </button>
             </div>

@@ -39,8 +39,17 @@ body {
   border-image: linear-gradient(to bottom, #d97706, #064e3b, #d97706) 1;
 }
 
-/* Telegram Mini App Viewport fix */
+/* Telegram Mini App & Android Viewport fix */
 html, body {
   min-height: 100%;
   overscroll-behavior-y: none;
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+#root {
+  overflow-x: hidden;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
