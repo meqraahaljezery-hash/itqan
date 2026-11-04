@@ -158,6 +158,11 @@ export const OnboardingSlider: React.FC<OnboardingSliderProps> = ({ onComplete }
         {/* Top bar with Skip button and Indicator */}
         <div className="bg-[#022c22] px-6 py-4 flex items-center justify-between text-white border-b border-emerald-900/60">
           <div className="flex items-center gap-2">
+            <img
+              src="/assets/branding/app-icon.png"
+              alt="شعار الجزري"
+              className="w-7 h-7 rounded-lg object-cover border border-amber-400/50"
+            />
             <span className="font-serif text-sm font-bold text-amber-300">
               {ACADEMY_SHORT_NAME}
             </span>
@@ -201,9 +206,17 @@ export const OnboardingSlider: React.FC<OnboardingSliderProps> = ({ onComplete }
             </div>
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 pt-2">
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#064e3b] to-[#022c22] flex items-center justify-center shrink-0 shadow-lg border border-amber-400/40">
-                {current.icon}
-              </div>
+              {currentSlide === 0 ? (
+                <img
+                  src="/assets/branding/app-icon.png"
+                  alt="شعار الجزري"
+                  className="w-16 h-16 rounded-2xl object-cover shadow-lg border border-amber-400/50 shrink-0"
+                />
+              ) : (
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#064e3b] to-[#022c22] flex items-center justify-center shrink-0 shadow-lg border border-amber-400/40">
+                  {current.icon}
+                </div>
+              )}
               <div>
                 <h3 className="text-xl sm:text-2xl font-black text-emerald-950 font-serif">
                   {current.title}

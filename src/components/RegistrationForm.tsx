@@ -232,15 +232,22 @@ export const RegistrationForm: React.FC<RegistrationFormProps> = ({ onGoToPortal
   return (
     <div className="max-w-3xl mx-auto px-4 py-6 sm:py-8">
       {/* Heading */}
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 border border-amber-300/80 text-amber-900 text-xs font-bold mb-2">
+      <div className="text-center mb-6 space-y-2">
+        <div className="flex items-center justify-center gap-2">
+          <img
+            src="/assets/branding/app-icon.png"
+            alt="شعار المقرأة"
+            className="w-12 h-12 rounded-2xl object-cover shadow-md border border-emerald-900/30"
+          />
+        </div>
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 border border-amber-300/80 text-amber-900 text-xs font-bold">
           <Sparkles className="w-3.5 h-3.5 text-amber-600" />
           <span>استمارة التسجيل الذكية والترميز الآلي</span>
         </div>
-        <h2 className="text-xl sm:text-3xl font-black text-emerald-950 font-serif">
+        <h2 className="text-xl sm:text-2xl font-black text-emerald-950 font-serif">
           تسجيل طالب جديد في {ACADEMY_NAME}
         </h2>
-        <p className="text-xs sm:text-sm text-stone-600 max-w-lg mx-auto mt-1">
+        <p className="text-xs sm:text-sm text-stone-600 max-w-lg mx-auto">
           اختر مسارك القرآني وفترتك التعليمية المناسبة لحجز مقعدك وتوليد كودك الأكاديمي فوراً.
         </p>
       </div>

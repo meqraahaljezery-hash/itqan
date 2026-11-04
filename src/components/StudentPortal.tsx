@@ -163,55 +163,83 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({ onGoToRegister }) 
 
   if (!student) {
     return (
-      <div className="max-w-md mx-auto px-4 py-12 text-center text-xs space-y-4">
-        <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-stone-200/90 space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#064e3b] to-[#022c22] text-amber-300 flex items-center justify-center mx-auto shadow-md">
-            <BookOpen className="w-7 h-7" />
+      <div className="max-w-md mx-auto px-3 sm:px-4 py-4 sm:py-6 text-center text-xs space-y-4">
+        {/* Welcome Branding Hero Card */}
+        <div className="bg-white rounded-3xl overflow-hidden shadow-xl border border-stone-200/90 text-stone-900">
+          <div className="relative">
+            <img
+              src="/assets/branding/recitation-hero.png"
+              alt="مقرأة الإمام الجزري للإقراء والإجازة بالسند"
+              className="w-full max-h-72 object-cover object-top"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-stone-950/80 via-transparent to-transparent flex items-end p-4">
+              <div className="text-right text-white">
+                <span className="text-[10px] text-amber-300 font-bold bg-emerald-950/80 px-2 py-0.5 rounded-md border border-amber-400/40">
+                  صرح قرآني إلكتروني عالمي
+                </span>
+                <h3 className="text-base sm:text-lg font-bold font-serif text-white mt-1">
+                  مرحباً بك في {ACADEMY_NAME}
+                </h3>
+              </div>
+            </div>
           </div>
 
-          <div>
-            <h3 className="text-base sm:text-lg font-bold text-emerald-950 font-serif">
-              مرحباً بك في {ACADEMY_NAME}
-            </h3>
-            <p className="text-stone-500 mt-1 leading-relaxed text-xs">
-              بوابة الطالب الرسمية لحساب الدقائق ومتابعة الحلقات والإجازة بالسند المتصل.
+          <div className="p-5 sm:p-6 space-y-4">
+            <p className="text-stone-600 leading-relaxed text-xs">
+              بوابة الطالب الرسمية لحساب الدقائق المعتمدة، ومتابعة الحلقات الفردية، وتوثيق السند المتصل إلى النبي ﷺ بإشراف نخبة من المقرئين المسندين.
             </p>
-          </div>
 
-          <div className="pt-2">
-            <button
-              onClick={onGoToRegister}
-              className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-800 to-emerald-950 hover:from-emerald-700 hover:to-emerald-900 text-white font-bold text-xs sm:text-sm shadow-md transition active:scale-95"
-            >
-              + تسجيل طالب جديد وتوليد الكود الآن
-            </button>
-          </div>
-
-          <div className="pt-4 border-t border-stone-100 space-y-2">
-            <span className="text-[11px] font-bold text-stone-600 block">
-              هل أنت مسجل مسبقاً؟ ابحث بكودك الأكاديمي:
-            </span>
-            <form onSubmit={handleSearchCode} className="flex gap-2">
-              <input
-                type="text"
-                value={searchCodeInput}
-                onChange={(e) => setSearchCodeInput(e.target.value)}
-                placeholder="أدخل كودك (مثال: IM-1001)"
-                className="flex-1 px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs uppercase bg-stone-50 text-center"
-                dir="ltr"
-              />
+            <div className="space-y-2 pt-1">
               <button
-                type="submit"
-                className="px-4 py-2 bg-stone-800 hover:bg-stone-900 text-white font-bold rounded-xl text-xs"
+                onClick={onGoToRegister}
+                className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-emerald-800 to-emerald-950 hover:from-emerald-700 hover:to-emerald-900 text-white font-bold text-xs sm:text-sm shadow-md transition active:scale-95 flex items-center justify-center gap-2"
               >
-                دخول
+                <span>+ تسجيل طالب جديد وتوليد الكود الآن</span>
               </button>
-            </form>
-            {searchError && (
-              <p className="text-red-600 text-[10px] mt-1">{searchError}</p>
-            )}
+
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="w-full py-2.5 px-4 rounded-2xl bg-white hover:bg-stone-50 border-2 border-stone-300 text-stone-800 font-bold text-xs shadow-xs transition active:scale-95 flex items-center justify-center gap-2"
+              >
+                <img
+                  src="/assets/branding/app-icon.png"
+                  alt="Google"
+                  className="w-4 h-4 rounded-md"
+                />
+                <span>تسجيل الدخول بحساب Google</span>
+              </button>
+            </div>
+
+            <div className="pt-4 border-t border-stone-100 space-y-2">
+              <span className="text-[11px] font-bold text-stone-600 block">
+                هل أنت مسجل مسبقاً؟ ادخل بكودك الأكاديمي:
+              </span>
+              <form onSubmit={handleSearchCode} className="flex gap-2">
+                <input
+                  type="text"
+                  value={searchCodeInput}
+                  onChange={(e) => setSearchCodeInput(e.target.value)}
+                  placeholder="أدخل كودك (مثال: IM-1001)"
+                  className="flex-1 px-3 py-2 rounded-xl border border-stone-300 font-mono text-xs uppercase bg-stone-50 text-center"
+                  dir="ltr"
+                />
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-stone-800 hover:bg-stone-900 text-white font-bold rounded-xl text-xs shrink-0"
+                >
+                  دخول
+                </button>
+              </form>
+              {searchError && (
+                <p className="text-red-600 text-[10px] mt-1">{searchError}</p>
+              )}
+            </div>
           </div>
         </div>
+
+        {isAuthModalOpen && (
+          <GoogleAuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+        )}
       </div>
     );
   }
@@ -227,7 +255,12 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({ onGoToRegister }) 
     <div className="max-w-4xl mx-auto px-3 sm:px-6 pt-4 pb-24 space-y-5">
       
       {/* Student Top Header Card (المحدد في القسم الثامن من البرومبت) */}
-      <div className="bg-gradient-to-br from-[#064e3b] via-[#04382a] to-[#022c22] rounded-3xl p-5 sm:p-7 text-white shadow-xl border-2 border-amber-400/40 relative overflow-hidden">
+      <div
+        className="rounded-3xl p-5 sm:p-7 text-white shadow-xl border-2 border-amber-400/40 relative overflow-hidden bg-cover bg-center"
+        style={{
+          backgroundImage: `linear-gradient(to bottom right, rgba(6, 78, 59, 0.93), rgba(2, 44, 34, 0.96)), url('/assets/branding/mobile-splash.png')`
+        }}
+      >
         <div className="absolute top-0 right-0 -mr-12 -mt-12 w-48 h-48 rounded-full bg-amber-400/10 blur-2xl"></div>
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5">

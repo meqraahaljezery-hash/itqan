@@ -77,11 +77,11 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
           className="flex items-center gap-2.5 cursor-pointer"
           onClick={() => setActiveTab('student_portal')}
         >
-          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-amber-700 flex items-center justify-center shadow-md p-0.5 ring-2 ring-amber-300/40 shrink-0">
-            <div className="w-full h-full rounded-[14px] bg-[#064e3b] flex items-center justify-center text-amber-300">
-              <BookOpen className="w-5 h-5 sm:w-6 sm:h-6" />
-            </div>
-          </div>
+          <img
+            src="/assets/branding/app-icon.png"
+            alt="شعار مقرأة الجزري"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl object-cover shadow-md ring-2 ring-amber-300/60 shrink-0 border border-emerald-950/40 bg-[#064e3b]"
+          />
           <div>
             <h1 className="text-sm sm:text-lg font-bold tracking-tight text-white flex items-center gap-1.5">
               <span>{ACADEMY_NAME}</span>

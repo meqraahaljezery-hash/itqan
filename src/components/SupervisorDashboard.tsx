@@ -165,9 +165,11 @@ export const SupervisorDashboard: React.FC = () => {
       {/* Top Supervisor / Admin Banner */}
       <div className="bg-white rounded-3xl shadow-sm border border-stone-200/90 p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#064e3b] to-[#022c22] text-amber-300 flex items-center justify-center font-bold shadow-md">
-            <ShieldCheck className="w-6 h-6" />
-          </div>
+          <img
+            src="/assets/branding/app-icon.png"
+            alt="مقرأة الجزري"
+            className="w-11 h-11 rounded-2xl object-cover shadow-md ring-2 ring-amber-300/60 shrink-0 border border-emerald-950"
+          />
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-bold text-sm sm:text-base text-emerald-950">
