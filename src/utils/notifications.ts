@@ -116,3 +116,57 @@ export function notifyShiftReminder(shiftTitle: string, shiftTime: string) {
     vibrate: [250, 100, 250],
   });
 }
+
+// 6. Notification: 10-Minute Balance Warning During Recitation
+export function notifyTenMinuteWarning(studentName: string, remainingMinutes: number) {
+  sendNativeNotification('⚠️ تنبيه: متبقي 10 دقائق على انتهاء رصيدك!', {
+    body: `تنبيه أثناء جلسة التلاوة: متبقي لديك ${remainingMinutes} دقائق فقط في رصيدك القرآني. يُرجى شحن باقة إضافية للاستمرار في التسميع دون انقطاع.`,
+    tag: 'ten_minute_warning',
+    vibrate: [300, 100, 300, 100, 500],
+  });
+}
+
+/**
+ * Gentle Web Audio Synthesizer Alert for In-App Session Notifications
+ * Plays a soft, dignified two-tone chime without external audio files
+ */
+export function playChimeAlert() {
+  try {
+    const AudioContextClass =
+      window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    
+    // First pleasant tone (587.33 Hz - D5)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc1.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.18);
+    gain1.gain.setValueAtTime(0.25, ctx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start();
+    osc1.stop(ctx.currentTime + 0.85);
+
+    // Second harmonic tone
+    setTimeout(() => {
+      try {
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'triangle';
+        osc2.frequency.setValueAtTime(880, ctx.currentTime);
+        osc2.frequency.exponentialRampToValueAtTime(1174.66, ctx.currentTime + 0.2);
+        gain2.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.7);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start();
+        osc2.stop(ctx.currentTime + 0.75);
+      } catch {}
+    }, 200);
+  } catch (e) {
+    console.warn('Audio alert not allowed or user gesture required:', e);
+  }
+}

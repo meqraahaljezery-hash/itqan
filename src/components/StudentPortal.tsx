@@ -32,6 +32,8 @@ import {
 import { PaymentModal } from './PaymentModal';
 import { ChatModal } from './ChatModal';
 import { GoogleAuthModal } from './GoogleAuthModal';
+import { LiveRecitationTracker } from './LiveRecitationTracker';
+import { NotificationsModal } from './NotificationsModal';
 import { getTelegramGroupLink, SHIFTS, SUPERVISOR_NAME, ACADEMY_NAME, SUPERVISOR_EMAIL } from '../constants';
 import { triggerHaptic } from '../utils/telegram';
 import {
@@ -72,6 +74,7 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({ onGoToRegister }) 
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [showProgramEnrollModal, setShowProgramEnrollModal] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleteError, setDeleteError] = useState('');
@@ -342,6 +345,43 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({ onGoToRegister }) 
           </div>
         </div>
       </div>
+
+      {/* 10-Minute Critical Warning Banner during Recitation */}
+      {student.balanceMinutes <= 10 && (
+        <div className="bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/10 rounded-2xl p-4 sm:p-5 border-2 border-amber-500 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-pulse">
+          <div className="flex items-start gap-3">
+            <div className="w-11 h-11 rounded-2xl bg-amber-500 text-stone-950 flex items-center justify-center shrink-0 shadow-md">
+              <AlertTriangle className="w-6 h-6 text-stone-950" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="bg-amber-400 text-stone-950 text-[10px] font-black px-2 py-0.5 rounded-full">
+                  تنبيه 10 دقائق
+                </span>
+                <h4 className="font-black text-sm text-amber-950">
+                  ⚠️ متبقي {student.balanceMinutes} دقائق فقط على انتهاء رصيدك أثناء جلسة التلاوة!
+                </h4>
+              </div>
+              <p className="text-xs text-amber-900 mt-1 leading-relaxed">
+                يُرجى شحن باقة إضافية الآن لتفادي انقطاع حلقة التسميع والإقراء مع فضيلة الشيخ.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            <button
+              onClick={() => setIsPaymentModalOpen(true)}
+              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-black text-xs shadow-md transition active:scale-95 flex items-center gap-1.5"
+            >
+              <CreditCard className="w-4 h-4" />
+              <span>شحن باقة دقائق الآن</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Live Recitation Session Tracker & Balance Countdown */}
+      <LiveRecitationTracker onOpenRecharge={() => setIsPaymentModalOpen(true)} />
 
       {/* Code Switcher Bar */}
       <div className="bg-white rounded-2xl p-3 shadow-xs border border-stone-200/80 flex items-center justify-between gap-3 text-xs">
@@ -1075,6 +1115,18 @@ export const StudentPortal: React.FC<StudentPortalProps> = ({ onGoToRegister }) 
         <GoogleAuthModal
           isOpen={isAuthModalOpen}
           onClose={() => setIsAuthModalOpen(false)}
+        />
+      )}
+
+      {/* MODAL: IN-APP NOTIFICATIONS CENTER */}
+      {isNotificationsOpen && (
+        <NotificationsModal
+          isOpen={isNotificationsOpen}
+          onClose={() => setIsNotificationsOpen(false)}
+          onOpenRecharge={() => {
+            setIsNotificationsOpen(false);
+            setIsPaymentModalOpen(true);
+          }}
         />
       )}
     </div>

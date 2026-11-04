@@ -250,6 +250,15 @@ export const ReciterSessionModal: React.FC<ReciterSessionModalProps> = ({
               onChange={(e) => setMinutesConsumed(parseInt(e.target.value, 10) || 1)}
               className="w-full p-2.5 rounded-xl border border-stone-300 font-mono text-center font-black text-emerald-950 text-base bg-white"
             />
+
+            {student.balanceMinutes - minutesConsumed <= 10 && (
+              <div className="mt-2 p-2 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-[11px] flex items-center gap-1.5 font-medium">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>
+                  تنبيه: سيتبقى للطالب ({Math.max(0, student.balanceMinutes - minutesConsumed)} دقيقة)، وسيتلقى إشعاراً صوتياً وتطبيعياً داخل المنصة لتجديد الباقة قبل النفاد.
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Rating */}

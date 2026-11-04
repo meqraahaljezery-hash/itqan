@@ -38,6 +38,8 @@ import {
   notifySessionDeducted,
   notifyLowBalance,
   notifyPaymentApproved,
+  notifyTenMinuteWarning,
+  playChimeAlert,
 } from '../utils/notifications';
 
 interface AppContextType {
@@ -100,6 +102,11 @@ interface AppContextType {
   toggleStudentStatus: (studentId: string, newStatus: 'active' | 'frozen' | 'suspended') => void;
   deleteStudentAccount: (studentId: string) => boolean;
   updateTelegramLinks: (links: TelegramLinksSettings) => void;
+  addNotification: (item: Omit<NotificationItem, 'id' | 'createdAt' | 'isRead'>) => void;
+  markNotificationAsRead: (id: string) => void;
+  markAllNotificationsAsRead: (recipientId?: string) => void;
+  clearNotifications: (recipientId?: string) => void;
+  triggerTenMinuteSessionWarning: (studentId: string, remainingMinutes: number) => void;
 }
 
 const STORAGE_PREFIX = 'jezery_quran_clean_v3_';
@@ -260,7 +267,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() => {
+    try {
+      const stored = localStorage.getItem(`${STORAGE_PREFIX}notifications`);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [platformSettings, setPlatformSettings] = useState<PlatformSettings>(DEFAULT_SETTINGS);
 
@@ -318,6 +332,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [registrationRequests]);
 
   useEffect(() => {
+    try {
+      localStorage.setItem(`${STORAGE_PREFIX}notifications`, JSON.stringify(notifications));
+    } catch {}
+  }, [notifications]);
+
+  useEffect(() => {
     if (!showOnboarding) {
       localStorage.setItem(`${STORAGE_PREFIX}seen_onboarding`, 'true');
     }
@@ -366,6 +386,78 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }`,
       duration: 3500,
     });
+  };
+
+  // In-App Notification Center methods
+  const addNotification = (item: Omit<NotificationItem, 'id' | 'createdAt' | 'isRead'>) => {
+    const newItem: NotificationItem = {
+      ...item,
+      id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      createdAt: new Date().toISOString(),
+      isRead: false,
+    };
+    setNotifications((prev) => [newItem, ...prev]);
+  };
+
+  const markNotificationAsRead = (id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, isRead: true } : n))
+    );
+  };
+
+  const markAllNotificationsAsRead = (recipientId?: string) => {
+    setNotifications((prev) =>
+      prev.map((n) =>
+        !recipientId || n.recipientId === recipientId || n.recipientId === 'all'
+          ? { ...n, isRead: true }
+          : n
+      )
+    );
+  };
+
+  const clearNotifications = (recipientId?: string) => {
+    if (!recipientId) {
+      setNotifications([]);
+    } else {
+      setNotifications((prev) =>
+        prev.filter((n) => n.recipientId !== recipientId && n.recipientId !== 'all')
+      );
+    }
+  };
+
+  // 10-Minute Warning During Recitation Session
+  const triggerTenMinuteSessionWarning = (studentId: string, remainingMinutes: number) => {
+    const student = students.find((s) => s.id === studentId);
+    if (!student) return;
+
+    // 1. Play soft audio chime alert
+    playChimeAlert();
+
+    // 2. Mobile haptic feedback
+    triggerHaptic('warning');
+
+    // 3. Add to In-App Notification Center
+    const notifItem: NotificationItem = {
+      id: `notif-10m-${Date.now()}`,
+      recipientId: student.id,
+      title: '⚠️ تنبيه: متبقي 10 دقائق على انتهاء رصيدك!',
+      message: `تنبيه أثناء جلسة التلاوة: رصيدك المتبقي أوشك على النفاد (${remainingMinutes} دقيقة متبقية). يُرجى شحن باقة إضافية للاستمرار في التسميع دون انقطاع.`,
+      type: 'warning',
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    };
+    setNotifications((prev) => [notifItem, ...prev]);
+
+    // 4. Push in-app toast
+    addToast({
+      type: 'warning',
+      title: '⚠️ تنبيه جلسة التلاوة (10 دقائق متبقية)',
+      message: `عزيزي الطالب ${student.fullName}، متبقي في رصيد جلستك ${remainingMinutes} دقائق فقط. احرص على شحن الباقة الآن.`,
+      duration: 9000,
+    });
+
+    // 5. Send native Android push notification
+    notifyTenMinuteWarning(student.fullName, remainingMinutes);
   };
 
   // Generate sequential code: IM-1001 or IF-1001
@@ -620,9 +712,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Native Mobile Notification for Deduction (like telecom alerts)
     notifySessionDeducted(student.fullName, minutesConsumed, surahName, balanceAfter);
 
-    // Low balance alert toast and native push notification
-    if (balanceAfter < platformSettings.lowBalanceThreshold) {
+    // Specific 10-minute alert or low balance alert
+    if (balanceAfter <= 10) {
+      triggerTenMinuteSessionWarning(student.id, balanceAfter);
+    } else if (balanceAfter < platformSettings.lowBalanceThreshold) {
       notifyLowBalance(balanceAfter);
+      addNotification({
+        recipientId: student.id,
+        title: '⚠️ تنبيه انخفاض الرصيد',
+        message: `رصيدك المتبقي أصبح ${balanceAfter} دقيقة. احرص على شحن باقة إضافية للاستمرار في التسميع.`,
+        type: 'warning',
+      });
       addToast({
         type: 'warning',
         title: '⚠️ تنبيه انخفاض الرصيد',
@@ -637,6 +737,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         duration: 5000,
       });
     }
+
+    // Record in-app notification for the student
+    addNotification({
+      recipientId: student.id,
+      title: `📖 خصم جلسة تسميع (${minutesConsumed} دقيقة)`,
+      message: `تم تسجيل تلاوة سورة ${surahName} (الآيات ${fromAyah} - ${toAyah}). رصيدك الحالي الآن: ${balanceAfter} دقيقة.`,
+      type: 'info',
+    });
 
     return {
       success: true,
@@ -1063,6 +1171,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         toggleStudentStatus,
         deleteStudentAccount,
         updateTelegramLinks,
+        addNotification,
+        markNotificationAsRead,
+        markAllNotificationsAsRead,
+        clearNotifications,
+        triggerTenMinuteSessionWarning,
       }}
     >
       {children}

@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { BookOpen, UserPlus, ShieldCheck, UserCheck, Sparkles, HelpCircle, User, LogIn } from 'lucide-react';
+import { BookOpen, UserPlus, ShieldCheck, UserCheck, Sparkles, HelpCircle, User, LogIn, Bell } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { PWAInstallButton } from './PWAInstallButton';
 import { isTelegramWebApp } from '../utils/telegram';
 import { ACADEMY_NAME, ACADEMY_SHORT_NAME, SUPERVISOR_EMAIL } from '../constants';
 import { GoogleAuthModal } from './GoogleAuthModal';
+import { NotificationsModal } from './NotificationsModal';
 
 interface HeaderProps {
   activeTab: 'student_portal' | 'register' | 'supervisor';
@@ -12,11 +13,27 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
-  const { currentUser, currentStudent, paymentRequests, registrationRequests, setShowOnboarding } = useApp();
+  const {
+    currentUser,
+    currentStudent,
+    paymentRequests,
+    registrationRequests,
+    notifications,
+    setShowOnboarding,
+  } = useApp();
   const pendingCount =
     paymentRequests.filter((p) => p.status === 'pending').length +
     registrationRequests.filter((r) => r.status === 'pending').length;
   const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+  const unreadNotifsCount = notifications.filter((n) => {
+    if (currentStudent && n.recipientId !== currentStudent.id && n.recipientId !== 'all') {
+      return false;
+    }
+    return !n.isRead;
+  }).length;
+
   const isSupervisor =
     currentUser.role === 'admin' ||
     currentUser.role === 'supervisor' ||
@@ -38,6 +55,21 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* In-App Notifications Bell */}
+          <button
+            onClick={() => setIsNotificationsOpen(true)}
+            className="relative flex items-center gap-1 text-[11px] bg-white/10 hover:bg-white/20 text-white px-2 py-0.5 rounded-lg border border-white/20 transition"
+            title="الإشعارات داخل التطبيق"
+          >
+            <Bell className="w-3.5 h-3.5 text-amber-300" />
+            <span className="hidden sm:inline">الإشعارات</span>
+            {unreadNotifsCount > 0 && (
+              <span className="bg-red-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs animate-pulse">
+                {unreadNotifsCount}
+              </span>
+            )}
+          </button>
+
           {/* Google Account Button */}
           <button
             onClick={() => setIsAuthOpen(true)}
@@ -152,6 +184,18 @@ export const Header: React.FC<HeaderProps> = ({ activeTab, setActiveTab }) => {
       {/* Google Auth Modal */}
       {isAuthOpen && (
         <GoogleAuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      )}
+
+      {/* In-App Notifications Center Modal */}
+      {isNotificationsOpen && (
+        <NotificationsModal
+          isOpen={isNotificationsOpen}
+          onClose={() => setIsNotificationsOpen(false)}
+          onOpenRecharge={() => {
+            setIsNotificationsOpen(false);
+            setActiveTab('student_portal');
+          }}
+        />
       )}
     </header>
   );
